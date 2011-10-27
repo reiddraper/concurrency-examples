@@ -2,17 +2,27 @@
 
 -export([start/0]).
 
-request(From) ->
-    spawn(fun () -> make_request(From) end).
+request(From, URL) ->
+    spawn(fun () -> make_request(From, URL) end).
 
-make_request(From) ->
-    Response = httpc:request("http://jsonip.com"),
+make_request(From, URL) ->
+    Response = httpc:request(URL),
     From ! Response.
+
+fetch() ->
+    request(self(), "http://jsonip.com"),
+    receive
+        Response ->
+            Response
+    after 500 ->
+        request(self(), "http://reiddraper.com"),
+        receive
+            Response ->
+                Response
+        end
+    end.
 
 start() ->
     inets:start(),
-    request(self()),
-    receive
-        Response ->
-            io:format("the response was ~p ~n", [Response])
-    end.
+    Response = fetch(),
+    io:format("the response was ~p ~n", [Response]).
